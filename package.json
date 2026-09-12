@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3001 --host=0.0.0.0",
-    "build": "vite build",
+    "bundle": "node scripts/bundleCodebaseForGemini.mjs",
+    "build": "node scripts/bundleCodebaseForGemini.mjs && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
