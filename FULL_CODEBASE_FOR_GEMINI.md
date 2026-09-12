@@ -1,5 +1,5 @@
 # OREGON TENANT GUARD: COMPLETE CODEBASE BUNDLE FOR GEMINI PRO AUDIT
-Generated: 2026-09-12T23:08:46.564Z
+Generated: 2026-09-12T23:21:35.989Z
 
 This document contains the complete frontend, legal reasoning, OCR parsing, and PDF pleading generation source code for TenantGuard Oregon.
 Evaluate against 2026 Oregon Revised Statutes (ORS 90 & 105), Uniform Trial Court Rules (UTCR 2.010), and the Oregon Consumer Privacy Act (OCPA).
@@ -3372,7 +3372,7 @@ export async function analyzeEvidence(
       });
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: [{ role: "user", parts }],
         config: {
           responseMimeType: "application/json",
