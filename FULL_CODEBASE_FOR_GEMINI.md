@@ -1,5 +1,5 @@
 # OREGON TENANT GUARD: COMPLETE CODEBASE BUNDLE FOR GEMINI PRO AUDIT
-Generated: 2026-09-12T21:56:43.520Z
+Generated: 2026-09-12T23:08:46.564Z
 
 This document contains the complete frontend, legal reasoning, OCR parsing, and PDF pleading generation source code for TenantGuard Oregon.
 Evaluate against 2026 Oregon Revised Statutes (ORS 90 & 105), Uniform Trial Court Rules (UTCR 2.010), and the Oregon Consumer Privacy Act (OCPA).
@@ -3260,12 +3260,10 @@ createRoot(document.getElementById('root')!).render(
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, Evidence, EvidenceType, NoticeAudit, HearingScript, StatutoryViolation, MandatoryAudit, WealthMetrics, TimelineItem } from "../types";
 
-// Get API key from Vite import.meta.env or process.env or localStorage
+// Get user-provided API key from localStorage or parameter (server key is kept safe behind /api/analyze)
 const getApiKey = (): string => {
   return (
-    (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) ||
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
-    localStorage.getItem('gemini_api_key') ||
+    (typeof window !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') ||
     ''
   );
 };

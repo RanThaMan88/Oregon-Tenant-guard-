@@ -215,13 +215,57 @@ const RESPONSE_SCHEMA = {
   ]
 };
 
+// In-memory rate limiting map for serverless instances
+interface RateLimitRecord {
+  count: number;
+  resetTime: number;
+}
+const ipRateLimits = new Map<string, RateLimitRecord>();
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes window
+const MAX_REQUESTS_PER_WINDOW = 6; // Max 6 full OCR/audit requests per 5 minutes per IP
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const record = ipRateLimits.get(ip);
+
+  // Clean expired entries periodically
+  if (ipRateLimits.size > 500) {
+    for (const [key, value] of ipRateLimits.entries()) {
+      if (now > value.resetTime) {
+        ipRateLimits.delete(key);
+      }
+    }
+  }
+
+  if (!record || now > record.resetTime) {
+    ipRateLimits.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return true;
+  }
+
+  record.count += 1;
+  return false;
+}
+
 export async function processAnalysis(body: { evidences: any[]; repairs?: any[]; jurisdiction?: string }) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured on the server environment.");
+    throw new Error("GEMINI_API_KEY is not configured in your Vercel environment variables. Please add GEMINI_API_KEY in Vercel Project Settings > Environment Variables.");
   }
 
   const { evidences = [], repairs = [], jurisdiction } = body;
+
+  // Payload guard: Max 5 documents to prevent runaway token costs
+  if (!Array.isArray(evidences)) {
+    throw new Error("Invalid request: 'evidences' must be an array.");
+  }
+  if (evidences.length > 5) {
+    throw new Error("Too many documents: A maximum of 5 pages/documents can be audited per request.");
+  }
+
   const ai = new GoogleGenAI({ apiKey });
   const parts: any[] = [{ text: ANALYSIS_SYSTEM_PROMPT }];
 
@@ -277,10 +321,24 @@ export async function processAnalysis(body: { evidences: any[]; repairs?: any[];
 
 // Node.js Serverless Handler (Vercel Node runtime)
 export default async function handler(req: any, res: any) {
-  // Enable CORS if needed
+  const origin = req.headers.origin || req.headers.referer || '';
+
+  // Restrict CORS: Allow same-origin, localhost, and vercel preview/production domains
+  const isAllowedOrigin = 
+    !origin ||
+    origin.includes('localhost') ||
+    origin.includes('127.0.0.1') ||
+    origin.includes('.vercel.app') ||
+    origin.includes('oregontenantguard');
+
+  if (isAllowedOrigin && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
   if (req.method === 'OPTIONS') {
@@ -291,8 +349,30 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: 'Method Not Allowed. Use POST.' });
   }
 
+  // Rate Limiting by IP
+  const rawIp = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket?.remoteAddress || 'unknown-client';
+  const clientIp = typeof rawIp === 'string' ? rawIp.split(',')[0].trim() : 'unknown-client';
+
+  if (isRateLimited(clientIp)) {
+    return res.status(429).json({ 
+      error: 'Security rate limit reached: You can perform up to 6 document audits per 5-minute window. Please wait a moment before trying again.',
+      status: 'rate_limited'
+    });
+  }
+
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const rawBody = req.body;
+    const body = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+
+    // Check payload size safety (Vercel hard limit is 4.5MB)
+    const approximateSize = JSON.stringify(body || {}).length;
+    if (approximateSize > 4.5 * 1024 * 1024) {
+      return res.status(413).json({
+        error: 'Payload Too Large: Uploaded document images exceed the 4.5MB server limit. Please upload clearer, compressed photos or fewer pages.',
+        status: 'payload_too_large'
+      });
+    }
+
     const result = await processAnalysis(body || {});
     return res.status(200).json(result);
   } catch (error: any) {
