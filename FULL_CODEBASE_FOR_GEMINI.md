@@ -1,5 +1,5 @@
 # OREGON TENANT GUARD: COMPLETE CODEBASE BUNDLE FOR GEMINI PRO AUDIT
-Generated: 2026-08-29T02:56:03.204Z
+Generated: 2026-09-12T21:56:43.520Z
 
 This document contains the complete frontend, legal reasoning, OCR parsing, and PDF pleading generation source code for TenantGuard Oregon.
 Evaluate against 2026 Oregon Revised Statutes (ORS 90 & 105), Uniform Trial Court Rules (UTCR 2.010), and the Oregon Consumer Privacy Act (OCPA).
@@ -3311,238 +3311,264 @@ export async function analyzeEvidence(
   repairs: { date: string, issue: string }[] = [],
   apiKeyOverride?: string
 ): Promise<AnalysisResult> {
-  const apiKey = apiKeyOverride || getApiKey();
-
-  // If no API key is set, produce a deterministic forensic calculation from evidence text
-  if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
-    return generateLocalDeterministicAudit(evidences, repairs);
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-  const parts: any[] = [{ text: ANALYSIS_SYSTEM_PROMPT }];
-
-  if (repairs.length > 0) {
-    const repairsText = repairs.map(r => `[TENANT REPAIR COMPLAINT: ${r.date}] - ${r.issue}`).join('\n');
-    parts.push({ 
-      text: `### TENANT HABITABILITY & REPAIR HISTORY (ORS 90.385 Retaliation Check):\n${repairsText}` 
-    });
-  }
-
-  evidences.forEach(e => {
-    const idTag = `[EVIDENCE_ID: ${e.id}]`;
-    if (e.dataUrl && e.dataUrl.startsWith('data:image/')) {
-      const split = e.dataUrl.split(',');
-      const mimeType = split[0].split(':')[1].split(';')[0];
-      const base64Data = split[1];
-      
-      parts.push({
-        inlineData: {
-          mimeType: mimeType,
-          data: base64Data
-        }
-      });
-      parts.push({ 
-        text: `${idTag} Eviction notice photo "${e.fileName || 'Notice_Page'}". Perform high-accuracy OCR, extract all dates, names, amounts, county, service method, and check for ORS 90/105 defects.` 
-      });
-    } else {
-      parts.push({ 
-        text: `${idTag} [${e.type.toUpperCase()}: ${e.fileName || 'Notice Document'}]\n${e.content}` 
-      });
-    }
-  });
-
+  // 1. Primary Secure Pathway: Call Vercel Serverless Function (/api/analyze)
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts }],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            county: { type: Type.STRING },
-            landlordName: { type: Type.STRING },
-            tenantName: { type: Type.STRING },
-            propertyAddress: { type: Type.STRING },
-            caseNumber: { type: Type.STRING },
-            noticeAudit: {
-              type: Type.OBJECT,
-              properties: {
-                noticeType: { 
-                  type: Type.STRING, 
-                  enum: ["10-Day Nonpayment", "13-Day Nonpayment (Mailed)", "72-Hour Nonpayment", "30-Day For-Cause", "90-Day No-Cause", "24-Hour Notice", "Unknown Notice Type"] 
-                },
-                dateOfNotice: { type: Type.STRING },
-                dateOfService: { type: Type.STRING },
-                methodOfService: { type: Type.STRING, enum: ["personal", "mail", "attachment", "mail_and_attachment", "unknown"] },
-                deadlineGiven: { type: Type.STRING },
-                legalDeadline: { type: Type.STRING },
-                daysGiven: { type: Type.NUMBER },
-                daysRequired: { type: Type.NUMBER },
-                isLegallySufficient: { type: Type.BOOLEAN },
-                defects: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      title: { type: Type.STRING },
-                      statute: { type: Type.STRING },
-                      description: { type: Type.STRING },
-                      severity: { type: Type.STRING, enum: ["fatal", "major", "warning"] },
-                      explanation: { type: Type.STRING }
-                    },
-                    required: ["title", "statute", "description", "severity", "explanation"]
-                  }
-                },
-                mathAudit: {
-                  type: Type.OBJECT,
-                  properties: {
-                    noticeDate: { type: Type.STRING },
-                    landlordDeadline: { type: Type.STRING },
-                    legalDeadline: { type: Type.STRING },
-                    daysShort: { type: Type.NUMBER },
-                    mailBufferIncluded: { type: Type.BOOLEAN },
-                    isHolidayOrSundayDeadline: { type: Type.BOOLEAN }
-                  },
-                  required: ["noticeDate", "landlordDeadline", "legalDeadline", "daysShort", "mailBufferIncluded", "isHolidayOrSundayDeadline"]
-                },
-                mandatedDisclosureFound: { type: Type.BOOLEAN },
-                nonRentFeesIncludedInCureAmount: { type: Type.BOOLEAN },
-                rentAmountClaimed: { type: Type.STRING },
-                feesClaimed: { type: Type.STRING },
-                suggestedUserOption: { 
-                  type: Type.STRING, 
-                  enum: ["Motion to Dismiss", "Answer to Residential Eviction", "Motion for Stay of Proceedings (SB 690)"] 
-                },
-                explanation: { type: Type.STRING }
-              },
-              required: [
-                "noticeType", "dateOfNotice", "dateOfService", "methodOfService", 
-                "deadlineGiven", "legalDeadline", "daysGiven", "daysRequired", 
-                "isLegallySufficient", "defects", "mathAudit", "mandatedDisclosureFound", 
-                "nonRentFeesIncludedInCureAmount", "suggestedUserOption", "explanation"
-              ]
-            },
-            violations: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  statute: { type: Type.STRING },
-                  title: { type: Type.STRING },
-                  severity: { type: Type.STRING, enum: ["fatal", "major", "moderate", "informational"] },
-                  description: { type: Type.STRING },
-                  detail: { type: Type.STRING },
-                  statutoryQuote: { type: Type.STRING },
-                  cureImpact: { type: Type.STRING }
-                },
-                required: ["statute", "title", "severity", "description", "detail", "cureImpact"]
-              }
-            },
-            hearingScript: {
-              type: Type.OBJECT,
-              properties: {
-                openingStatement: { type: Type.STRING },
-                motionToDismissScript: { type: Type.STRING },
-                answerPresentationScript: { type: Type.STRING },
-                judgeFAQ: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      question: { type: Type.STRING },
-                      suggestedAnswer: { type: Type.STRING },
-                      proTip: { type: Type.STRING }
-                    },
-                    required: ["question", "suggestedAnswer", "proTip"]
-                  }
-                }
-              },
-              required: ["openingStatement", "motionToDismissScript", "answerPresentationScript", "judgeFAQ"]
-            },
-            timeline: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  date: { type: Type.STRING },
-                  event: { type: Type.STRING },
-                  significance: { type: Type.STRING },
-                  category: { type: Type.STRING, enum: ["repair", "payment", "communication", "notice", "service", "other"] }
-                },
-                required: ["date", "event", "significance", "category"]
-              }
-            },
-            exhibits: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  label: { type: Type.STRING },
-                  category: { type: Type.STRING, enum: ["notice", "receipt", "communication", "habitability", "other"] },
-                  summary: { type: Type.STRING },
-                  evidenceId: { type: Type.STRING }
-                },
-                required: ["id", "label", "category", "summary", "evidenceId"]
-              }
-            },
-            sb690: {
-              type: Type.OBJECT,
-              properties: {
-                eligibility: { type: Type.STRING, enum: ["QUALIFIED", "NOT_QUALIFIED", "UNKNOWN"] },
-                explanation: { type: Type.STRING }
-              },
-              required: ["eligibility", "explanation"]
-            },
-            statementOfFacts: { type: Type.STRING },
-            audit: {
-              type: Type.OBJECT,
-              properties: {
-                county: { type: Type.STRING },
-                landlord: { type: Type.STRING },
-                tenant: { type: Type.STRING },
-                propertyAddress: { type: Type.STRING },
-                defectFound: { type: Type.BOOLEAN },
-                primaryDefect: { type: Type.STRING },
-                timeline: {
-                  type: Type.OBJECT,
-                  properties: {
-                    noticeDate: { type: Type.STRING },
-                    landlordDeadline: { type: Type.STRING },
-                    legalDeadline: { type: Type.STRING },
-                    daysShort: { type: Type.NUMBER }
-                  },
-                  required: ["noticeDate", "landlordDeadline", "legalDeadline", "daysShort"]
-                }
-              },
-              required: ["county", "landlord", "tenant", "defectFound", "primaryDefect", "timeline"]
-            },
-            conversion: {
-              type: Type.OBJECT,
-              properties: {
-                daysGained: { type: Type.NUMBER },
-                savings: { type: Type.NUMBER },
-                winMetric: { type: Type.STRING },
-                averageDismissalCostSavings: { type: Type.NUMBER }
-              },
-              required: ["daysGained", "savings", "winMetric", "averageDismissalCostSavings"]
-            }
-          },
-          required: [
-            "county", "landlordName", "tenantName", "noticeAudit", "violations", 
-            "hearingScript", "timeline", "exhibits", "statementOfFacts", "audit", "conversion"
-          ]
-        }
-      }
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        evidences,
+        repairs,
+      })
     });
 
-    const parsed = JSON.parse(response.text || "{}");
-    return parsed as AnalysisResult;
-  } catch (error) {
-    console.warn("Gemini API call encountered an issue, running local deterministic audit:", error);
-    return generateLocalDeterministicAudit(evidences, repairs);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.noticeAudit) {
+        return data as AnalysisResult;
+      }
+    } else {
+      console.warn(`Backend /api/analyze returned HTTP ${response.status}. Attempting fallback.`);
+    }
+  } catch (backendError) {
+    console.warn('Backend serverless route not reachable, attempting client fallback:', backendError);
   }
+
+  // 2. Direct Client-Side Fallback (only if apiKeyOverride is explicitly provided)
+  const apiKey = apiKeyOverride || getApiKey();
+  if (apiKey && apiKey !== 'MY_GEMINI_API_KEY' && apiKey !== '') {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const parts: any[] = [{ text: ANALYSIS_SYSTEM_PROMPT }];
+
+      if (repairs.length > 0) {
+        const repairsText = repairs.map(r => `[TENANT REPAIR COMPLAINT: ${r.date}] - ${r.issue}`).join('\n');
+        parts.push({ 
+          text: `### TENANT HABITABILITY & REPAIR HISTORY (ORS 90.385 Retaliation Check):\n${repairsText}` 
+        });
+      }
+
+      evidences.forEach(e => {
+        const idTag = `[EVIDENCE_ID: ${e.id}]`;
+        if (e.dataUrl && e.dataUrl.startsWith('data:image/')) {
+          const split = e.dataUrl.split(',');
+          const mimeType = split[0].split(':')[1].split(';')[0];
+          const base64Data = split[1];
+          
+          parts.push({
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
+          });
+          parts.push({ 
+            text: `${idTag} Eviction notice photo "${e.fileName || 'Notice_Page'}". Perform high-accuracy OCR, extract all dates, names, amounts, county, service method, and check for ORS 90/105 defects.` 
+          });
+        } else {
+          parts.push({ 
+            text: `${idTag} [${e.type.toUpperCase()}: ${e.fileName || 'Notice Document'}]\n${e.content}` 
+          });
+        }
+      });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{ role: "user", parts }],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              county: { type: Type.STRING },
+              landlordName: { type: Type.STRING },
+              tenantName: { type: Type.STRING },
+              propertyAddress: { type: Type.STRING },
+              caseNumber: { type: Type.STRING },
+              noticeAudit: {
+                type: Type.OBJECT,
+                properties: {
+                  noticeType: { 
+                    type: Type.STRING, 
+                    enum: ["10-Day Nonpayment", "13-Day Nonpayment (Mailed)", "72-Hour Nonpayment", "30-Day For-Cause", "90-Day No-Cause", "24-Hour Notice", "Unknown Notice Type"] 
+                  },
+                  dateOfNotice: { type: Type.STRING },
+                  dateOfService: { type: Type.STRING },
+                  methodOfService: { type: Type.STRING, enum: ["personal", "mail", "attachment", "mail_and_attachment", "unknown"] },
+                  deadlineGiven: { type: Type.STRING },
+                  legalDeadline: { type: Type.STRING },
+                  daysGiven: { type: Type.NUMBER },
+                  daysRequired: { type: Type.NUMBER },
+                  isLegallySufficient: { type: Type.BOOLEAN },
+                  defects: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        title: { type: Type.STRING },
+                        statute: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                        severity: { type: Type.STRING, enum: ["fatal", "major", "warning"] },
+                        explanation: { type: Type.STRING }
+                      },
+                      required: ["title", "statute", "description", "severity", "explanation"]
+                    }
+                  },
+                  mathAudit: {
+                    type: Type.OBJECT,
+                    properties: {
+                      noticeDate: { type: Type.STRING },
+                      landlordDeadline: { type: Type.STRING },
+                      legalDeadline: { type: Type.STRING },
+                      daysShort: { type: Type.NUMBER },
+                      mailBufferIncluded: { type: Type.BOOLEAN },
+                      isHolidayOrSundayDeadline: { type: Type.BOOLEAN }
+                    },
+                    required: ["noticeDate", "landlordDeadline", "legalDeadline", "daysShort", "mailBufferIncluded", "isHolidayOrSundayDeadline"]
+                  },
+                  mandatedDisclosureFound: { type: Type.BOOLEAN },
+                  nonRentFeesIncludedInCureAmount: { type: Type.BOOLEAN },
+                  rentAmountClaimed: { type: Type.STRING },
+                  feesClaimed: { type: Type.STRING },
+                  suggestedUserOption: { 
+                    type: Type.STRING, 
+                    enum: ["Motion to Dismiss", "Answer to Residential Eviction", "Motion for Stay of Proceedings (SB 690)"] 
+                  },
+                  explanation: { type: Type.STRING }
+                },
+                required: [
+                  "noticeType", "dateOfNotice", "dateOfService", "methodOfService", 
+                  "deadlineGiven", "legalDeadline", "daysGiven", "daysRequired", 
+                  "isLegallySufficient", "defects", "mathAudit", "mandatedDisclosureFound", 
+                  "nonRentFeesIncludedInCureAmount", "suggestedUserOption", "explanation"
+                ]
+              },
+              violations: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    statute: { type: Type.STRING },
+                    title: { type: Type.STRING },
+                    severity: { type: Type.STRING, enum: ["fatal", "major", "moderate", "informational"] },
+                    description: { type: Type.STRING },
+                    detail: { type: Type.STRING },
+                    statutoryQuote: { type: Type.STRING },
+                    cureImpact: { type: Type.STRING }
+                  },
+                  required: ["statute", "title", "severity", "description", "detail", "cureImpact"]
+                }
+              },
+              hearingScript: {
+                type: Type.OBJECT,
+                properties: {
+                  openingStatement: { type: Type.STRING },
+                  motionToDismissScript: { type: Type.STRING },
+                  answerPresentationScript: { type: Type.STRING },
+                  judgeFAQ: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        question: { type: Type.STRING },
+                        suggestedAnswer: { type: Type.STRING },
+                        proTip: { type: Type.STRING }
+                      },
+                      required: ["question", "suggestedAnswer", "proTip"]
+                    }
+                  }
+                },
+                required: ["openingStatement", "motionToDismissScript", "answerPresentationScript", "judgeFAQ"]
+              },
+              timeline: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    date: { type: Type.STRING },
+                    event: { type: Type.STRING },
+                    significance: { type: Type.STRING },
+                    category: { type: Type.STRING, enum: ["repair", "payment", "communication", "notice", "service", "other"] }
+                  },
+                  required: ["date", "event", "significance", "category"]
+                }
+              },
+              exhibits: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING },
+                    label: { type: Type.STRING },
+                    category: { type: Type.STRING, enum: ["notice", "receipt", "communication", "habitability", "other"] },
+                    summary: { type: Type.STRING },
+                    evidenceId: { type: Type.STRING }
+                  },
+                  required: ["id", "label", "category", "summary", "evidenceId"]
+                }
+              },
+              sb690: {
+                type: Type.OBJECT,
+                properties: {
+                  eligibility: { type: Type.STRING, enum: ["QUALIFIED", "NOT_QUALIFIED", "UNKNOWN"] },
+                  explanation: { type: Type.STRING }
+                },
+                required: ["eligibility", "explanation"]
+              },
+              statementOfFacts: { type: Type.STRING },
+              audit: {
+                type: Type.OBJECT,
+                properties: {
+                  county: { type: Type.STRING },
+                  landlord: { type: Type.STRING },
+                  tenant: { type: Type.STRING },
+                  propertyAddress: { type: Type.STRING },
+                  defectFound: { type: Type.BOOLEAN },
+                  primaryDefect: { type: Type.STRING },
+                  timeline: {
+                    type: Type.OBJECT,
+                    properties: {
+                      noticeDate: { type: Type.STRING },
+                      landlordDeadline: { type: Type.STRING },
+                      legalDeadline: { type: Type.STRING },
+                      daysShort: { type: Type.NUMBER }
+                    },
+                    required: ["noticeDate", "landlordDeadline", "legalDeadline", "daysShort"]
+                  }
+                },
+                required: ["county", "landlord", "tenant", "propertyAddress", "defectFound", "primaryDefect", "timeline"]
+              },
+              conversion: {
+                type: Type.OBJECT,
+                properties: {
+                  daysGained: { type: Type.NUMBER },
+                  savings: { type: Type.NUMBER },
+                  winMetric: { type: Type.STRING },
+                  averageDismissalCostSavings: { type: Type.NUMBER }
+                },
+                required: ["daysGained", "savings", "winMetric", "averageDismissalCostSavings"]
+              }
+            },
+            required: [
+              "county", "landlordName", "tenantName", "propertyAddress", "caseNumber", 
+              "noticeAudit", "violations", "hearingScript", "timeline", "exhibits", 
+              "sb690", "statementOfFacts", "audit", "conversion"
+            ]
+          }
+        }
+      });
+
+      if (response.text) {
+        return JSON.parse(response.text) as AnalysisResult;
+      }
+    } catch (clientErr) {
+      console.warn('Client direct AI error, falling back to local deterministic calculation:', clientErr);
+    }
+  }
+
+  // 3. Robust Offline Deterministic Forensic Math Engine
+  return generateLocalDeterministicAudit(evidences, repairs);
 }
 
 /**
@@ -4593,7 +4619,8 @@ export interface ValidationResult {
   "type": "module",
   "scripts": {
     "dev": "vite --port=3001 --host=0.0.0.0",
-    "build": "vite build",
+    "bundle": "node scripts/bundleCodebaseForGemini.mjs",
+    "build": "node scripts/bundleCodebaseForGemini.mjs && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
