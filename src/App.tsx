@@ -2389,26 +2389,152 @@ ${result ? JSON.stringify(result.noticeAudit, null, 2) : 'No notice uploaded yet
 
       </main>
 
-      {/* Footer */}
-      <footer className={`border-t py-6 px-4 text-xs transition-colors ${theme === 'dark' ? 'border-white/[0.06] bg-[#030508] text-slate-500' : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-          <div>
-            <p className="font-bold text-slate-400">TenantGuard Oregon • Pro Se Eviction Defense Engine</p>
-            <p className="text-[10px]">Statutory compliance under ORS 90, ORS 105, OCPA & UTCR 2.010.</p>
+      {/* Institutional Legal-Tech Multi-Column Footer */}
+      <footer className={`border-t py-12 px-4 sm:px-8 text-xs transition-colors ${theme === 'dark' ? 'border-white/[0.08] bg-[#030509] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+        <div className="max-w-4xl mx-auto space-y-8">
+          
+          {/* Main Footer Columns */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            
+            {/* Col 1: Brand & Mission */}
+            <div className="md:col-span-1 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center text-white font-black text-xs shadow-md">
+                  TG
+                </div>
+                <span className="font-extrabold text-sm tracking-tight text-white">TenantGuard</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-slate-400">
+                Automated computational scrivener engineered for Oregon tenants exercising pro se self-representation rights under ORS 9.320 and UTCR 2.010.
+              </p>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[10px] text-cyan-400 font-mono font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                <span>2026 ORS 90 & 105 Compliant</span>
+              </div>
+            </div>
+
+            {/* Col 2: Self-Help Court Pleadings */}
+            <div className="space-y-2.5">
+              <h4 className="font-bold text-slate-200 text-xs tracking-wider uppercase">Court Documents</h4>
+              <ul className="space-y-1.5 text-[11px]">
+                <li>
+                  <button onClick={() => { if (result) { prepareCourtDraft(); setStep('court_pack'); } else { setStep('scan'); } }} className="hover:text-cyan-400 transition-colors cursor-pointer text-left">
+                    Motion to Dismiss (ORS 90.155)
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { if (result) { prepareCourtDraft(); setStep('court_pack'); } else { setStep('scan'); } }} className="hover:text-cyan-400 transition-colors cursor-pointer text-left">
+                    FED Answer & Defenses (ORS 90.320)
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { if (result) { prepareCourtDraft(); setStep('court_pack'); } else { setStep('scan'); } }} className="hover:text-cyan-400 transition-colors cursor-pointer text-left">
+                    SB 690 90-Day Stay Motion
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { setStep('resources'); }} className="hover:text-cyan-400 transition-colors cursor-pointer text-left">
+                    Fee Waiver Form (ORS 21.682)
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { setStep('resources'); }} className="hover:text-cyan-400 transition-colors cursor-pointer text-left">
+                    Record Sealing (ORS 105.163)
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 3: Compliance & Legal Policies */}
+            <div className="space-y-2.5">
+              <h4 className="font-bold text-slate-200 text-xs tracking-wider uppercase">Legal & Compliance</h4>
+              <ul className="space-y-1.5 text-[11px]">
+                <li>
+                  <button onClick={() => { setLegalTab('tos'); setShowLegal(true); }} className="hover:text-cyan-400 transition-colors cursor-pointer text-left">
+                    Terms of Service & Scrivener
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { setLegalTab('privacy'); setShowLegal(true); }} className="hover:text-cyan-400 transition-colors cursor-pointer text-left">
+                    Privacy Policy (OCPA / ORS 646A)
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { setLegalTab('upl'); setShowLegal(true); }} className="hover:text-cyan-400 transition-colors cursor-pointer text-left">
+                    Pro Se Scrivener Rules (ORS 9.160)
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => setShowAiAuditModal(true)} className="hover:text-cyan-400 transition-colors cursor-pointer text-left">
+                    Gemini AI Transparency Export
+                  </button>
+                </li>
+                <li>
+                  <a href="mailto:support@oregontenantguard.org" className="hover:text-cyan-400 transition-colors">
+                    Compliance & Support Contact
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 4: Official Oregon Resources & Crisis Lines */}
+            <div className="space-y-2.5">
+              <h4 className="font-bold text-rose-300 text-xs tracking-wider uppercase flex items-center gap-1.5">
+                <LifeBuoy size={13} className="text-rose-400" /> Crisis & Legal Aid
+              </h4>
+              <ul className="space-y-2 text-[11px]">
+                <li>
+                  <a href="tel:988" className="inline-flex items-center gap-1.5 font-bold text-rose-400 hover:text-rose-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                    <span>Suicide & Crisis Lifeline: Call 988</span>
+                  </a>
+                  <p className="text-[10px] text-slate-500 pl-3">24/7/365, Free & Confidential</p>
+                </li>
+                <li>
+                  <a href="tel:211" className="inline-flex items-center gap-1.5 font-semibold text-slate-300 hover:text-white">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                    <span>Oregon 211 Housing Help: Dial 211</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="https://www.osbar.org/public/ris/" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 flex items-center gap-1 text-slate-400">
+                    <span>OSB Modest Means: (503) 684-3763</span>
+                    <ExternalLink size={10} />
+                  </a>
+                </li>
+                <li>
+                  <a href="https://lasoregon.org" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 flex items-center gap-1 text-slate-400">
+                    <span>Legal Aid Services of Oregon (LASO)</span>
+                    <ExternalLink size={10} />
+                  </a>
+                </li>
+                <li>
+                  <a href="https://oregonlawcenter.org" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 flex items-center gap-1 text-slate-400">
+                    <span>Oregon Law Center (OLC)</span>
+                    <ExternalLink size={10} />
+                  </a>
+                </li>
+              </ul>
+            </div>
+
           </div>
-          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 text-xs">
-            <button onClick={() => { setLegalTab('tos'); setShowLegal(true); }} className="hover:underline cursor-pointer">Terms of Service</button>
-            <span>•</span>
-            <button onClick={() => { setLegalTab('privacy'); setShowLegal(true); }} className="hover:underline cursor-pointer">Privacy Policy (OCPA)</button>
-            <span>•</span>
-            <button onClick={() => { setLegalTab('upl'); setShowLegal(true); }} className="hover:underline cursor-pointer">Scrivener / UPL</button>
-            <span>•</span>
-            <button onClick={() => setShowAiAuditModal(true)} className="text-slate-400 hover:text-cyan-400 hover:underline cursor-pointer">Audit Export</button>
-            <span>•</span>
-            <a href="tel:988" className="text-rose-400 font-bold flex items-center gap-1">
-              <LifeBuoy size={13} /> Crisis 988
-            </a>
+
+          {/* Mandatory Statutory Disclaimer Box */}
+          <div className={`p-3.5 rounded-2xl border text-[11px] leading-relaxed ${theme === 'dark' ? 'bg-white/[0.02] border-white/[0.06] text-slate-400' : 'bg-white border-slate-200 text-slate-500'}`}>
+            <strong className="text-slate-300 block mb-1 font-semibold">
+              Statutory Non-Attorney Scrivener Notice (ORS 9.160 & ORS 9.320):
+            </strong>
+            TenantGuard Oregon is an automated computational document preparation scrivener service and is not a law firm. We do not practice law, provide legal advice, represent parties in court, or create an attorney-client relationship. Communications are protected strictly under the Oregon Consumer Privacy Act (OCPA). Natural persons have the sovereign right to represent themselves in Oregon courts pursuant to ORS 9.320. All users are solely responsible for reviewing and verifying the factual accuracy of their pleadings under ORCP 17 before filing. In accordance with ORS 646.608, no guarantee of judicial outcome is expressed or implied.
           </div>
+
+          {/* Bottom Copyright & Status */}
+          <div className="pt-4 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
+            <p>© {new Date().getFullYear()} TenantGuard Oregon. All rights reserved.</p>
+            <p className="font-mono text-[10px]">
+              Built for Oregon Circuit Courts • UTCR 2.010 Form Compliant
+            </p>
+          </div>
+
         </div>
       </footer>
     </div>
