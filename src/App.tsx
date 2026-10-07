@@ -2469,9 +2469,13 @@ ${result ? JSON.stringify(result.noticeAudit, null, 2) : 'No notice uploaded yet
                     Gemini AI Transparency Export
                   </button>
                 </li>
-                <li>
-                  <a href="mailto:support@oregontenantguard.org" className="hover:text-cyan-400 transition-colors">
-                    Compliance & Support Contact
+                <li className="pt-1">
+                  <a 
+                    href="mailto:support@oregontenantguard.org?subject=TenantGuard%20Support%20Request&body=Hello%20TenantGuard%20Support,%0A%0AI%20need%20assistance%20with%20my%20notice%20audit%20or%20court%20pack.%0A%0ACounty:%20%0AIssue%20Description:%20"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-bold hover:bg-cyan-500/20 hover:text-cyan-300 transition-all cursor-pointer shadow-xs"
+                  >
+                    <LifeBuoy size={12} />
+                    <span>Contact Support</span>
                   </a>
                 </li>
               </ul>
